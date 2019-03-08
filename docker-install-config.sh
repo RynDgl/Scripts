@@ -31,8 +31,15 @@ yum localinstall -y container-selinux-2.74-1.el7.noarch.rpm
 yum install -y docker-ce docker-ce-cli containerd.io
 
 #Configure Docker to run on boot
-sudo systemctl enable docker
+
+#Configure Docker Daemon
+touch /etc/docker/daemon.json
+echo "
+{ \
+"hosts": ["unix:///var/run/docker.sock"] \
+}" >> /etc/docker/daemon.json
 
 #Test Docker
-systemctl start docker
+dockerd
 docker run hello-world
+
