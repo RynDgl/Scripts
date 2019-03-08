@@ -35,10 +35,7 @@ systemctl enable docker.service
 
 #Configure Docker Daemon
 touch /etc/docker/daemon.json
-echo "
-{ \
-"hosts": ["unix:///var/run/docker.sock"] \
-}" >> /etc/docker/daemon.json
+printf '%s\n' '{' '"hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"' '}' >> /etc/docker/daemon.json
 
 #Test Docker
 dockerd
