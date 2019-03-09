@@ -41,3 +41,7 @@ printf '%s\n' '{' '"hosts": ["unix:///var/run/docker.sock"]' '}' >> /etc/docker/
 dockerd
 docker run hello-world
 
+#Add jenkins and give docker privelage
+useradd jenkins
+usermod -aG docker jenkins
+
