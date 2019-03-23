@@ -3,6 +3,26 @@
 #add more hosts if needed example would be other nodes
 echo >> /etc/hosts 192.168.1.99 kubemaster
 
+#configure networking
+# MASTER NODE
+# TCP	Inbound	6443*	Kubernetes API server	All
+firewall-cmd --zone=public --add-port=6443/tcp --permanent
+# TCP	Inbound	2379-2380	etcd server client API	kube-apiserver, etcd
+firewall-cmd --zone=public --add-port=2379-2380/tcp --permanent
+# TCP	Inbound	10250	Kubelet API	Self, Control plane
+firewall-cmd --zone=public --add-port=10250/tcp --permanent
+# TCP	Inbound	10251	kube-scheduler	Self
+firewall-cmd --zone=public --add-port=10251/tcp --permanent
+# TCP	Inbound	10252	kube-controller-manager	Self
+firewall-cmd --zone=public --add-port=10252/tcp --permanent
+# WORKER NODE
+# TCP	Inbound	10250	Kubelet API	Self, Control plane
+# firewall-cmd --zone=public --add-port=10250/tcp --permanent
+# TCP	Inbound	30000-32767	NodePort Services**	All
+# firewall-cmd --zone=public --add-port=30000-32767/tcp --permanent
+
+firewall-cmd --reload
+
 #turn off SELinux
 setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' \
@@ -48,6 +68,7 @@ mkdir -p /etc/systemd/system/docker.service.d
 #retart docker
 systemctl daemon-reload
 systemctl restart docker
+systemctl enable kubelet.service
 
 #configure Kubernetes
 cat >> /etc/yum.repos.d/kubernetes.repo <<EOF
@@ -71,6 +92,7 @@ sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' \
 #restart systemd daemon and kubelet service
 systemctl daemon-reload
 systemctl restart kubelet
+systemctl enable jubernetes
 
 #initialize kubernetes cluster REPLACE ADDRESS WITH APPROPRIATE ADDRESS FOR NODE
 kubeadm init --apiserver-advertise-address=192.168.1.99 \
