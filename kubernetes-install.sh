@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #add more hosts if needed example would be other nodes
-echo >> /etc/hosts 192.168.1.99 kubemaster
+echo >> /etc/hosts 10.0.0.214 kubemaster
 
 #configure networking
 # MASTER NODE
@@ -63,12 +63,12 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-mkdir -p /etc/systemd/system/docker.service.d
+#mkdir -p /etc/systemd/system/docker.service.d
 
 #retart docker
 systemctl daemon-reload
 systemctl restart docker
-systemctl enable kubelet.service
+systemctl enable docker.service
 
 #configure Kubernetes
 cat >> /etc/yum.repos.d/kubernetes.repo <<EOF
@@ -92,10 +92,10 @@ sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' \
 #restart systemd daemon and kubelet service
 systemctl daemon-reload
 systemctl restart kubelet
-systemctl enable jubernetes
+systemctl enable kubelet
 
 #initialize kubernetes cluster REPLACE ADDRESS WITH APPROPRIATE ADDRESS FOR NODE
-kubeadm init --apiserver-advertise-address=192.168.1.99 \
+kubeadm init --apiserver-advertise-address=10.0.0.214 \
 --pod-network-cidr=192.168.1.0/16
 
 #configure kubernetes
@@ -106,3 +106,6 @@ chown $(id -u):$(id -g) $HOME/.kube/config
 #deploy flannel network to cluster
 kubectl apply -f \
 https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+#set node ip static (for private network or testing)
+#
