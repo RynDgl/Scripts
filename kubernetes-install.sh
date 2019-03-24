@@ -4,19 +4,16 @@
 IP=`hostname -I | cut -d " " -f 1`
 echo Enter Master or Worker node name:
 read NODENAME
-echo "What type of node are you installing?"
-select NODETYPE in "MASTER" "WORKER"; do
-    case $NODETYPE in
-        MASTER ) NODETYPE=MASTER; break;;
-        WORKER ) NODETYPE=WORKER; exit;;
-    esac
-done
+echo "What type of node are you installing? type 1 for master or 2 for worker"
+read NODETYPE
+echo specify non root user
+read NONROOTUSER
 
 #add more hosts if needed example would be other nodes
 echo >> /etc/hosts $IP $NODENAME 
 
 #configure networking
-if [$NODETYPE == "MASTER"]
+if [ "$NODETYPE" == "1" ];
 then
 # MASTER NODE
 # TCP	Inbound	6443*	Kubernetes API server	All
@@ -46,8 +43,8 @@ sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' \
 
 #turn off Swap
 swapoff -a
-#(in progress edit /etc/fstab ) sed 's/^' /etc/fstab
-
+LINE=`grep -n "/dev/mapper/centos/swap" /etc/fstab | cut -d ":" -f 1`
+sed -i "$LINE"' s/^/#/' /etc/fstab
 #enable br_netfilter
 modprobe br_netfilter
 echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
@@ -65,6 +62,7 @@ yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce
 yum install -y docker-ce
 
 #configure docker daemon
+touch /etc/docker/daemon.json
 cat > /etc/docker/daemon.json <<EOF
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
@@ -79,12 +77,16 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-#mkdir -p /etc/systemd/system/docker.service.d (maybe not needed)
+#mkdir -p /etc/systemd/system/docker.service.d (may not be needed)
 
 #retart docker
 systemctl daemon-reload
 systemctl restart docker
 systemctl enable docker.service
+
+#configure docker perms
+groupadd docker
+usermod -aG docker $USER
 
 #configure Kubernetes
 cat >> /etc/yum.repos.d/kubernetes.repo <<EOF
@@ -102,7 +104,8 @@ EOF
 yum install -y kubelet kubeadm kubectl
 
 #add kubernetes to same cgroup as docker "cgroupfs"
-sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' \
+CG=$(sudo docker info 2>/dev/null | sed -n 's/Cgroup Driver: \(.*\)/\1/p')
+sed -i "s/cgroup-driver=systemd/cgroup-driver=$CG/g" \
 /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 #restart systemd daemon and kubelet service
@@ -111,29 +114,25 @@ systemctl restart kubelet
 systemctl enable kubelet
 
 #initialize kubernetes cluster REPLACE ADDRESS WITH APPROPRIATE ADDRESS FOR NODE
-if [$NODETYPE == "MASTER"]
+if [ "$NODETYPE" == "1"] ;
 then
     kubeadm init --apiserver-advertise-address=$IP --pod-network-cidr=192.168.1.0/16
-elif [$NODETYPE == "WORKER"]
-    echo Enter your join token
-    read JOINTOKEN  
-    do ;
+else
+    JOINTOKEN=$(<join-text.txt)
     #add a scan of token to add the master to host list
     echo Joining Master
     $JOINTOKEN
-    done
 fi
 
-
+su - "$NONROOTUSER"
 
 #configure kubernetes
 mkdir -p $HOME/.kube
 cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
 
-#deploy flannel network to cluster
-kubectl apply -f \
-https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+#deploy flannel network to cluster 
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
 
 #set node ip static (for private network or testing)
-#
