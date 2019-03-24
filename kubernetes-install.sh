@@ -1,9 +1,23 @@
 #!/bin/bash
 
+#assign IP
+IP=`hostname -I | cut -d " " -f 1`
+echo Enter Master or Worker node name:
+read NODENAME
+echo "What type of node are you installing?"
+select NODETYPE in "MASTER" "WORKER"; do
+    case $NODETYPE in
+        MASTER ) NODETYPE=MASTER; break;;
+        WORKER ) NODETYPE=WORKER; exit;;
+    esac
+done
+
 #add more hosts if needed example would be other nodes
-echo >> /etc/hosts 10.0.0.214 kubemaster
+echo >> /etc/hosts $IP $NODENAME 
 
 #configure networking
+if [$NODETYPE == "MASTER"]
+then
 # MASTER NODE
 # TCP	Inbound	6443*	Kubernetes API server	All
 firewall-cmd --zone=public --add-port=6443/tcp --permanent
@@ -15,11 +29,13 @@ firewall-cmd --zone=public --add-port=10250/tcp --permanent
 firewall-cmd --zone=public --add-port=10251/tcp --permanent
 # TCP	Inbound	10252	kube-controller-manager	Self
 firewall-cmd --zone=public --add-port=10252/tcp --permanent
+else
 # WORKER NODE
 # TCP	Inbound	10250	Kubelet API	Self, Control plane
-# firewall-cmd --zone=public --add-port=10250/tcp --permanent
+firewall-cmd --zone=public --add-port=10250/tcp --permanent
 # TCP	Inbound	30000-32767	NodePort Services**	All
-# firewall-cmd --zone=public --add-port=30000-32767/tcp --permanent
+firewall-cmd --zone=public --add-port=30000-32767/tcp --permanent
+fi
 
 firewall-cmd --reload
 
@@ -63,7 +79,7 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-#mkdir -p /etc/systemd/system/docker.service.d
+#mkdir -p /etc/systemd/system/docker.service.d (maybe not needed)
 
 #retart docker
 systemctl daemon-reload
@@ -95,8 +111,20 @@ systemctl restart kubelet
 systemctl enable kubelet
 
 #initialize kubernetes cluster REPLACE ADDRESS WITH APPROPRIATE ADDRESS FOR NODE
-kubeadm init --apiserver-advertise-address=10.0.0.214 \
---pod-network-cidr=192.168.1.0/16
+if [$NODETYPE == "MASTER"]
+then
+    kubeadm init --apiserver-advertise-address=$IP --pod-network-cidr=192.168.1.0/16
+elif [$NODETYPE == "WORKER"]
+    echo Enter your join token
+    read JOINTOKEN  
+    do ;
+    #add a scan of token to add the master to host list
+    echo Joining Master
+    $JOINTOKEN
+    done
+fi
+
+
 
 #configure kubernetes
 mkdir -p $HOME/.kube
