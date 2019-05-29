@@ -16,7 +16,7 @@ yum install -y yarn git gcc libX11-devel.x86_64 libxkbfile-devel.x86_64 libsecre
 yum groupinstall -y 'Development Tools'
 export PATH="$PATH:/opt/yarn*/bin"
 
-yarn config set cafile /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+#yarn config set cafile /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 
 #set timeout to 16.66 minutes
 
