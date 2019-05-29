@@ -18,6 +18,9 @@ export PATH="$PATH:/opt/yarn*/bin"
 
 #yarn config set cafile /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 
+#install gulp for all users
+npm install -g gulp
+
 #set timeout to 16.66 minutes
 
 cd /tmp/vscode-master
