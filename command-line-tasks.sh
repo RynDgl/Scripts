@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#simple work in progress
+#Future implimentation will be done with python3 and will:
+#### - generate the skeleton of the shell script
+#### - create the skeleton functions
+#### - leverage old code examples to create quick reuse cases
+#### - use a command line tool that will be able to generate these scripts
+
 # A template script with a uniform approach for creating easily repeatable automated
 # functions in the absense of automation tools like Ansible.
 
